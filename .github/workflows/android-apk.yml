@@ -69,7 +69,7 @@ jobs:
           chmod +x gradlew
           mkdir -p ../.arena
           set -o pipefail
-          node ../scripts/run-checked.mjs ./gradlew assembleDebug assembleDebugAndroidTest -PdreamsoulVersionCode=${{ github.run_number }} --no-daemon --max-workers=2 --console=plain 2>&1 | tee ../.arena/android-build.log
+          node ../scripts/run-checked.mjs ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest -PdreamsoulVersionCode=${{ github.run_number }} --no-daemon --max-workers=2 --console=plain 2>&1 | tee ../.arena/android-build.log
       - name: Publish bounded native build diagnostic
         if: failure()
         env:
@@ -96,7 +96,7 @@ jobs:
             adb shell run-as com.dreamsoul.app mkdir -p files/models
             head -c 4194304 .arena/offline-model.gguf > .arena/model-prefix.part
             adb shell -T 'run-as com.dreamsoul.app sh -c "cat > files/models/dreamsoul-light.part"' < .arena/model-prefix.part
-            node scripts/run-checked.mjs android/gradlew -p android connectedDebugAndroidTest -PdreamsoulVersionCode=${{ github.run_number }} -Pandroid.testInstrumentationRunnerArguments.class=com.dreamsoul.app.OfflineEngineTest --no-daemon --console=plain
+            node scripts/run-checked.mjs android/gradlew -p android :app:connectedDebugAndroidTest -PdreamsoulVersionCode=${{ github.run_number }} -Pandroid.testInstrumentationRunnerArguments.class=com.dreamsoul.app.OfflineEngineTest --no-daemon --console=plain
       - name: Keep native test reports
         if: always()
         uses: actions/upload-artifact@v4

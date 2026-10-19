@@ -199,7 +199,11 @@ public class OfflineAIPlugin extends Plugin {
                 response = new JSObject().put("text", new String(result, StandardCharsets.UTF_8)).put("contextTokens", 2048);
             } catch (Throwable e) { error = e.getMessage() == null ? "Local AI could not finish the reply." : e.getMessage(); }
             finally { activeRequest = null; busy.set(false); }
-            if (error != null) call.reject(error); else call.resolve(response);
+            final String failure = error; final JSObject result = response;
+            // Final delivery joins the same UI queue as token notifications.
+            // This also preserves ordering on Capacitor's legacy WebView bridge.
+            Runnable finish = () -> { if (failure != null) call.reject(failure); else call.resolve(result); };
+            if (getActivity() != null) getActivity().runOnUiThread(finish); else finish.run();
         });
     }
     @PluginMethod public void cancel(PluginCall call) {
