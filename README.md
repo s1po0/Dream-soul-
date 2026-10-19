@@ -100,11 +100,11 @@ Deploy `dist/` to a static host that rewrites application routes to `index.html`
 ## Verification completed
 
 - TypeScript and production build pass.
-- 22 Vitest checks pass, including arbitrary SSE framing/UTF-8 chunk boundaries.
+- 25 Vitest checks pass, including arbitrary SSE framing/UTF-8 chunk boundaries.
 - 8 Playwright flows pass at 390px and desktop widths, including real keystrokes in the edit dialog and no horizontal overflow on the main pages. External auth/catalog APIs are mocked in browser tests; demo conversations are exercised end to end.
 - The rollback-only SQL regression was also run against the connected Supabase project: owner isolation, anonymous/public/private access, protected message/counter writes, service-only RPCs, concurrent chat locking, one thread per character, and the 30/hour cap all pass. Fixtures were rolled back.
 - `npm audit` reports no known dependency vulnerabilities at build time.
-- Live provider-generated replies and Google OAuth remain unverified until the owner supplies those provider credentials.
+- A real OpenAI request was tested on 2026-10-19: it returned HTTP 429 with a quota/billing-related failure. The key is configured, but successful live replies remain blocked on the provider account. Google OAuth remains unverified/unconfigured.
 
 ## Android APK
 
@@ -154,3 +154,9 @@ This is a server-only fix: the existing APK does not need to be reinstalled. Pro
 The default provider is OpenAI. Create its key at https://platform.openai.com/api-keys and ensure the provider account has API quota. If using a different provider, identify its website first and configure its documented OpenAI-compatible endpoint/model; do not send unknown credentials to guessed providers. Merely finding a secret or passing mocked tests does not verify a live reply.
 
 A temporary server-side classification check was used during diagnosis and then removed. It returned only predefined key-family/format labels, never credential values, and made no AI-generation requests.
+
+### Verified provider blocker (2026-10-19)
+
+A small live request from the connected backend to OpenAI returned **HTTP 429**, with a quota/billing-related error. This is separate from DreamSoul's own 30-messages/hour allowance and is not fixed by reinstalling the APK or creating another key on the same provider account. The owner must check [OpenAI API billing](https://platform.openai.com/settings/organization/billing/overview) and [API/project limits](https://platform.openai.com/settings/organization/limits), then retry. ChatGPT subscription billing and API usage are separate. No existing user chats were used in the test.
+
+The server now returns redacted `AI_PROVIDER_QUOTA`, `AI_PROVIDER_RATE_LIMIT`, `AI_PROVIDER_AUTH`, or `AI_PROVIDER_MODEL` codes with distinct messages. It never forwards raw provider errors, which may include sensitive account/key details. Temporary diagnostic infrastructure is removed after testing.

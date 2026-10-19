@@ -87,15 +87,22 @@ Deno.serve(async request => {
       signal: upstreamAbort.signal,
     }).catch(error => { clearTimeout(timeout); throw error })
     if (!upstream.ok || !upstream.body) {
-      clearTimeout(timeout); await upstream.body?.cancel(); await failTurn()
-      const providerError = [401, 403].includes(upstream.status)
-        ? 'The AI provider rejected the configured key. The owner needs to check that it is valid and can access the selected model.'
-        : [402, 429].includes(upstream.status)
-          ? 'The AI provider has reached a billing or rate limit. The owner needs to check API credits, billing and limits, or try again shortly.'
-          : [400, 404].includes(upstream.status)
-            ? 'The AI provider could not use the configured model. The owner needs to check LLM_BASE_URL and LLM_MODEL.'
-            : 'The AI provider couldn’t reply. Please check the server’s provider configuration or try again later.'
-      return json({ error: providerError }, 502)
+      // Inspect the upstream failure only on the server. Never return its raw
+      // text: providers may include credentials or account details in errors.
+      const diagnostic = (await upstream.text().catch(() => '')).toLowerCase()
+      clearTimeout(timeout); await failTurn()
+      const quotaOrBilling = upstream.status === 402 || (upstream.status === 429 && /insufficient.{0,20}quota|quota.{0,40}(exceed|exhaust)|exceed.{0,40}quota|billing|credit|payment|balance/.test(diagnostic))
+      const code = quotaOrBilling ? 'AI_PROVIDER_QUOTA' : [401, 403].includes(upstream.status) ? 'AI_PROVIDER_AUTH' : upstream.status === 429 ? 'AI_PROVIDER_RATE_LIMIT' : [400, 404].includes(upstream.status) ? 'AI_PROVIDER_MODEL' : 'AI_PROVIDER_ERROR'
+      const providerError = quotaOrBilling
+        ? 'Live replies are blocked by the AI provider’s API quota or billing limit. The owner must check API credits and account/project limits.'
+        : [401, 403].includes(upstream.status)
+          ? 'The AI provider rejected the configured key. The owner needs to check that it is valid and can access the selected model.'
+          : upstream.status === 429
+            ? 'The AI provider is temporarily rate-limiting requests. Wait a little and retry; if it persists, the owner should check provider rate limits.'
+            : [400, 404].includes(upstream.status)
+              ? 'The AI provider could not use the configured model. The owner needs to check LLM_BASE_URL and LLM_MODEL.'
+              : 'The AI provider couldn’t reply. Please check the server’s provider configuration or try again later.'
+      return json({ error: providerError, code, provider_status: upstream.status }, 502)
     }
     const encoder = new TextEncoder()
     let canceled = false
