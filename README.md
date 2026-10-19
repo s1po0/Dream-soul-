@@ -43,6 +43,10 @@ Without an LLM secret, the live function returns a useful **503 configuration er
 
 The **1.1.0-offline-preview** Android build adds actual CPU inference using **llama.cpp** and **Qwen2.5-0.5B Instruct Q4_K_M**. This is not the scripted demo. Publishing is gated on the real Android model/inference test described below; older APK previews do not include this engine.
 
+**Published and verified:** [Android Preview #9 — download APK](https://github.com/s1po0/Dream-soul-/releases/download/android-preview-9/DreamSoul-preview.apk) ([release notes](https://github.com/s1po0/Dream-soul-/releases/tag/android-preview-9)). APK: 19,817,010 bytes. SHA-256: `909adc0ae21f3ca94028931015972f3e389b1f75e39fa2085ebff667696bf3fe`.
+
+The [Android validation/release run 39289529829](https://github.com/s1po0/Dream-soul-/actions/runs/39289529829) passed: real native HTTPS resume/download/verification; actual prompt-dependent JNI replies, recent-message context, streamed UTF-8 equality, cancellation and retry with **no active device network**; model deletion; APK signing verification and publication. Source: `677c27db6019f9273f57d776765d02aac16c4012`. The [web CI run 39289529811](https://github.com/s1po0/Dream-soul-/actions/runs/39289529811) also passed all 35 units and 12 phone/desktop browser flows.
+
 ### Use it on a phone
 
 1. Install an APK whose release notes explicitly say **real Offline AI** from [GitHub Releases](https://github.com/s1po0/Dream-soul-/releases).
@@ -140,7 +144,7 @@ Deploy `dist/` to a static host that rewrites application routes to `index.html`
 - 35 Vitest checks pass, including arbitrary SSE framing/UTF-8 chunk boundaries.
 - 12 Playwright flows pass at 390px and desktop widths, including real keystrokes in the edit dialog and no horizontal overflow on the main pages. External auth/catalog APIs are mocked in browser tests; demo conversations are exercised end to end. Offline browser checks prove no cloud requests (even with an expired saved session), separate histories, persistent pending messages, explicit switching, and honest errors without a native engine.
 - The rollback-only SQL regression was also run against the connected Supabase project: owner isolation, anonymous/public/private access, protected message/counter writes, service-only RPCs, concurrent chat locking, one thread per character, and the 30/hour cap all pass. Fixtures were rolled back.
-- The pinned native C++ engine and JNI bridge compile on the Linux host. This is a compilation check, not a claim of Android runtime success. The Android release workflow additionally gates publishing on real native download/resume + SHA-256 verification, then real model inference, streamed UTF-8, recent-message context, cancellation/retry, and removal **after disabling device networking**. See the run status before downloading.
+- The pinned native C++ engine and JNI bridge compile on the Linux host. The Android runtime was also tested successfully in the release-gating emulator run linked above: real native download/resume + SHA-256 verification, real model inference, streamed UTF-8, recent-message context, cancellation/retry, and removal **after disabling device networking**. This is an emulator check, not a speed/RAM benchmark for every physical phone.
 - `npm audit` reports no known dependency vulnerabilities at build time.
 - A real OpenAI request was tested on 2026-10-19: it returned HTTP 429 with a quota/billing-related failure. The key is configured, but successful live replies remain blocked on the provider account. Google OAuth remains unverified/unconfigured.
 
