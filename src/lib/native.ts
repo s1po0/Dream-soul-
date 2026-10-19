@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core'
 import { App } from '@capacitor/app'
 import { Browser } from '@capacitor/browser'
 import { toast } from 'sonner'
+import { readLocal } from './utils'
 import { supabase } from './supabase'
 
 export const NATIVE_CALLBACK = 'com.dreamsoul.app://auth/callback'
@@ -14,6 +15,7 @@ export async function openNativeOAuth(url: string) { await Browser.open({ url })
 export async function initializeNativeApp(navigate: (path: '/onboarding' | '/reset-password') => void) {
   if (!isNativeApp()) return
   const callback = async (url: string) => {
+    if (readLocal('offline-ai-enabled', false)) return
     const parsed = new URL(url)
     if (parsed.protocol !== 'com.dreamsoul.app:' || parsed.hostname !== 'auth' || parsed.pathname !== '/callback') return
     try {

@@ -6,6 +6,7 @@ import { CreatePage } from './pages/Create'
 import { ChatPage } from './pages/Chat'
 import { ChatsPage } from './pages/Chats'
 import { ProfilePage } from './pages/Profile'
+import { OfflinePage } from './pages/Offline'
 import { LegalPage } from './pages/Legal'
 import { EmptyState } from './components/ui'
 
@@ -16,6 +17,7 @@ const rootRoute = createRootRoute({
 })
 const discoverRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: Discover })
 const favoritesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/favorites', component: () => <Discover favoritesOnly/> })
+const offlineRoute = createRoute({ getParentRoute: () => rootRoute, path: '/offline', component: OfflinePage })
 const authRoute = createRoute({ getParentRoute: () => rootRoute, path: '/auth', component: AuthPage })
 const onboardingRoute = createRoute({ getParentRoute: () => rootRoute, path: '/onboarding', validateSearch: (search: Record<string, unknown>): { demo?: boolean } => ({ demo: (search.demo === true || search.demo === 'true' || search.demo === '1') || undefined }), component: () => { const { demo } = onboardingRoute.useSearch(); return <OnboardingPage demo={demo}/> } })
 const resetRoute = createRoute({ getParentRoute: () => rootRoute, path: '/reset-password', component: ResetPasswordPage })
@@ -26,6 +28,6 @@ const chatsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/chats'
 const profileRoute = createRoute({ getParentRoute: () => rootRoute, path: '/profile', component: ProfilePage })
 const termsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/terms', component: () => <LegalPage/> })
 const privacyRoute = createRoute({ getParentRoute: () => rootRoute, path: '/privacy', component: () => <LegalPage privacy/> })
-const routeTree = rootRoute.addChildren([discoverRoute, favoritesRoute, authRoute, onboardingRoute, resetRoute, createCharacterRoute, editCharacterRoute, chatRoute, chatsRoute, profileRoute, termsRoute, privacyRoute])
+const routeTree = rootRoute.addChildren([discoverRoute, favoritesRoute, offlineRoute, authRoute, onboardingRoute, resetRoute, createCharacterRoute, editCharacterRoute, chatRoute, chatsRoute, profileRoute, termsRoute, privacyRoute])
 export const router = createRouter({ routeTree, defaultPreload: 'intent', scrollRestoration: true })
 declare module '@tanstack/react-router' { interface Register { router: typeof router } }

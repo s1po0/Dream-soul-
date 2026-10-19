@@ -1,11 +1,26 @@
 import { createClient } from '@supabase/supabase-js'
+import { readLocal } from './utils'
 import { projectConfig } from './project-config'
 
 const url = import.meta.env.VITE_LOCAL_ONLY === 'true' ? '' : (import.meta.env.VITE_SUPABASE_URL || projectConfig.url)
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || projectConfig.publishableKey
-export const supabase = url && key && !url.includes('your-project') ? createClient(url, key, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' },
-}) : null
+function createCloudClient() {
+  return url && key && !url.includes('your-project') ? createClient(url, key, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' },
+    global: { fetch: (...args: Parameters<typeof fetch>) => {
+      // Also guard an already-created SDK when the user switches modes mid-session.
+      if (readLocal('offline-ai-enabled', false)) return Promise.reject(new TypeError('Cloud services are paused while Offline AI is on.'))
+      return fetch(...args)
+    } },
+  }) : null
+}
+// autoRefreshToken:false alone is insufficient: the SDK can refresh an expired
+// session while emitting INITIAL_SESSION. Do not construct it on offline boot.
+export let supabase = readLocal('offline-ai-enabled', false) ? null : createCloudClient()
+export function enableCloudClient() {
+  if (readLocal('offline-ai-enabled', false)) return null
+  return supabase ??= createCloudClient()
+}
 export const supabaseUrl: string | undefined = url
 export const supabaseKey: string | undefined = key
 

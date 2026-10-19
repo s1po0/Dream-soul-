@@ -102,7 +102,7 @@ test('18+ onboarding, create, streaming demo chat, edit, regenerate, restart, an
 })
 
 test('every main page fits the viewport, and safety and legal dialogs work', async ({ page }) => {
-  for (const path of ['/', '/create', '/auth', '/profile', '/chats', '/terms', '/privacy']) {
+  for (const path of ['/', '/create', '/auth', '/profile', '/chats', '/offline', '/terms', '/privacy']) {
     await page.goto(path)
     await expect(page.locator('main')).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `overflow at ${path}`).toBe(true)
@@ -118,4 +118,52 @@ test('Google sign-in gives a useful setup message instead of a broken redirect',
   await page.getByRole('button', { name: 'Continue with Google' }).click()
   await expect(page.getByRole('alert')).toContainText('Google sign-in needs to be enabled')
   await expect(page).toHaveURL(/\/auth$/)
+})
+
+test('Offline AI setup explains the real Android requirement without pretending the browser can generate', async ({ page }) => {
+  await page.goto('/offline')
+  await expect(page.getByRole('heading', { name: 'Built for the Android app' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Get the Android APK' })).toHaveAttribute('href', 'https://github.com/s1po0/Dream-soul-/releases')
+  await expect(page.locator('.offline-explainer')).toContainText('never a pretend AI response')
+  await expect(page.getByRole('button', { name: 'Download free model' })).toHaveCount(0)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+})
+
+test('offline boot makes no cloud requests; native failure stays honest; histories and mode choice are separate', async ({ page }) => {
+  const character = SEED_CHARACTERS[0]
+  await page.addInitScript(({ character }) => {
+    if (localStorage.getItem('offline-test-initialized')) return
+    localStorage.setItem('offline-test-initialized', 'true')
+    localStorage.setItem('dreamsoul:offline-ai-enabled', 'true')
+    localStorage.setItem('dreamsoul:demo-profile', JSON.stringify({ id: 'demo', username: 'offline_dreamer', avatar_url: '/images/luna.webp', adult_confirmed: true, nsfw_enabled: false, onboarding_completed: true }))
+    localStorage.setItem(`dreamsoul:messages:${character.id}`, JSON.stringify([{ id: 'demo-old', chat_id: `local-${character.id}`, role: 'assistant', content: 'This is scripted-demo history.', created_at: new Date().toISOString() }]))
+    localStorage.setItem('dreamsoul:request-times', JSON.stringify(Array(30).fill(Date.now())))
+    // An expired cloud session must remain dormant, not refresh while offline.
+    localStorage.setItem('sb-cbkddsztcivllpwzflkx-auth-token', JSON.stringify({ access_token: 'expired-test-session', refresh_token: 'must-remain-dormant', expires_at: 1, expires_in: 1, token_type: 'bearer', user: { id: '00000000-0000-4000-8000-000000000001', aud: 'authenticated', role: 'authenticated' } }))
+  }, { character })
+  const requests: string[] = []
+  page.on('request', request => { if (request.url().includes('.supabase.co/')) requests.push(request.url()) })
+  await page.goto('/')
+  await expect(page.locator('.character-card').first()).toBeVisible()
+  await page.goto('/auth')
+  await expect(page.getByRole('heading', { name: 'Your world is offline.' })).toBeVisible()
+  await page.goto(`/chat/${character.id}`)
+  await expect(page.locator('.chat-demo-bar')).toContainText('Offline AI')
+  await page.getByRole('textbox', { name: 'Your message' }).fill('Please make a new story about a comet.')
+  await page.getByRole('button', { name: 'Send message', exact: true }).click()
+  await expect(page.locator('.chat-error')).toContainText('updated 64-bit Android APK')
+  await expect(page.locator('.message-bubble')).toHaveCount(2)
+  expect(await page.evaluate(id => JSON.parse(localStorage.getItem(`dreamsoul:offline:messages:${id}`) || '[]').at(-1)?.role, character.id)).toBe('user')
+  expect(await page.evaluate(id => JSON.parse(localStorage.getItem(`dreamsoul:messages:${id}`) || '[]')[0]?.content, character.id)).toBe('This is scripted-demo history.')
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Continue local reply' })).toBeVisible()
+  await page.goto('/chats')
+  await expect(page.locator('.chat-history-item')).toHaveCount(1)
+  await page.goto('/offline')
+  await expect(page.locator('.offline-active')).toContainText('Offline AI is on')
+  expect(requests, 'offline mode must not refresh auth or fetch cloud catalogs/history').toEqual([])
+  await page.getByRole('button', { name: 'Return to online / demo mode' }).click()
+  await page.goto(`/chat/${character.id}`)
+  await expect(page.locator('.chat-demo-bar')).toContainText('Scripted replies')
+  await expect(page.locator('.message-bubble')).toHaveText('This is scripted-demo history.')
 })

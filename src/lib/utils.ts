@@ -15,8 +15,8 @@ export function timeAgo(date: string) {
 export function readLocal<T>(key: string, fallback: T): T {
   try { return JSON.parse(localStorage.getItem(`dreamsoul:${key}`) || 'null') ?? fallback } catch { return fallback }
 }
-export function writeLocal(key: string, value: unknown) {
-  try { localStorage.setItem(`dreamsoul:${key}`, JSON.stringify(value)) } catch { /* Storage can be disabled in private browsing. */ }
+export function writeLocal(key: string, value: unknown, required = false) {
+  try { localStorage.setItem(`dreamsoul:${key}`, JSON.stringify(value)) } catch { if (required) throw new Error('Device storage is full or unavailable. Free some space before saving your offline world.') }
 }
 export function errorMessage(error: unknown) {
   if (error instanceof Error) return error.message

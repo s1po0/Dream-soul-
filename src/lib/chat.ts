@@ -7,8 +7,8 @@ export type ChatMode = 'send' | 'edit' | 'regenerate' | 'restart'
 export function greetingMessage(character: Character, chatId = ''): Message {
   return { id: `greeting-${character.id}`, chat_id: chatId, role: 'assistant', content: character.greeting, created_at: new Date().toISOString() }
 }
-export async function loadConversation(character: Character, userId?: string) {
-  if (!supabase || !userId) return { chatId: `local-${character.id}`, messages: readLocal<Message[]>(`messages:${character.id}`, [greetingMessage(character, `local-${character.id}`)]) }
+export async function loadConversation(character: Character, userId?: string, offlineAI = false) {
+  if (!supabase || !userId) return { chatId: `local-${character.id}`, messages: readLocal<Message[]>(`${offlineAI ? 'offline:' : ''}messages:${character.id}`, [greetingMessage(character, `local-${character.id}`)]) }
   const { data: chat, error } = await supabase.from('chats').select('id').eq('user_id', userId).eq('character_id', character.id).maybeSingle()
   if (error) throw error
   if (!chat) return { chatId: '', messages: [greetingMessage(character)] }

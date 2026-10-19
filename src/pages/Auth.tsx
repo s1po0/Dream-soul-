@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { ArrowRight, Check, CheckCircle2, Eye, EyeOff, ImagePlus, Mail, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowRight, Cpu, Check, CheckCircle2, Eye, EyeOff, ImagePlus, Mail, ShieldCheck, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { Avatar, Button, Logo } from '../components/ui'
 import { useApp } from '../context/AppContext'
@@ -10,7 +10,7 @@ import { cn, errorMessage } from '../lib/utils'
 import { authRedirect, isNativeApp, openNativeOAuth } from '../lib/native'
 
 export function AuthPage() {
-  const { user, profile, authLoading } = useApp()
+  const { user, profile, authLoading, offlineAI, setOfflineAI } = useApp()
   const navigate = useNavigate()
   const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin')
   const [email, setEmail] = useState('')
@@ -55,6 +55,7 @@ export function AuthPage() {
       if (isNativeApp() && data.url) { await openNativeOAuth(data.url); setLoading(false) }
     } catch (error) { setError(errorMessage(error)); setLoading(false) }
   }
+  if (offlineAI) return <div className="centered-page"><section className="onboarding-card"><Logo/><Cpu size={32}/><h2>Your world is offline.</h2><p>Offline AI doesn’t need a cloud account. Create a local profile, or explicitly switch back online to sign in.</p><Link to="/offline" className="button button-primary">Offline AI setup <ArrowRight size={16}/></Link><Link to="/onboarding" search={{ demo: true }} className="text-link">Create your local 18+ profile</Link><Button variant="secondary" onClick={() => setOfflineAI(false)}>Switch online to sign in</Button></section></div>
   return <div className="auth-page page-enter"><div className="auth-visual"><div className="auth-visual-shade"/><div><span className="eyebrow"><Sparkles size={14}/> A WORLD THAT GETS YOU</span><h2>Every great story<br/>starts with<br/><span>a connection.</span></h2><p>Find your people. Create your characters.<br/>Make a little room for the extraordinary.</p><div className="auth-character-quote"><Avatar name="Luna" src="/images/luna.webp"/><span>“There you are. I was hoping<br/>the moon would bring you here.”<small>— Luna Evermore</small></span></div></div></div><section className="auth-card"><Logo/><span className="eyebrow auth-eyebrow">YOUR NEXT CHAPTER</span><h2>{sent ? 'A little note in your inbox.' : mode === 'signup' ? 'Your world is waiting.' : mode === 'reset' ? 'Let’s get you back in.' : 'Good to see you, dreamer.'}</h2><p>{sent ? `We’ve sent a ${mode === 'reset' ? 'password reset' : 'confirmation'} link to ${email}. Check your inbox and spam folder.` : mode === 'signup' ? 'Create an account. Find a connection that’s yours.' : mode === 'reset' ? 'Enter your email and we’ll send you a reset link.' : 'Sign in and pick up where your imagination left off.'}</p>
       {sent ? <div className="email-sent"><Mail size={42}/><Button variant="secondary" onClick={() => { setSent(false); setMode('signin') }}>Back to sign in <ArrowRight size={16}/></Button></div> : <>
         {mode !== 'reset' && <><Button variant="secondary" className="google-button" onClick={() => void googleSignIn()} disabled={loading || authLoading}><GoogleIcon/>Continue with Google</Button><div className="auth-divider"><span/>or continue with email<span/></div></>}
@@ -64,13 +65,13 @@ export function AuthPage() {
         </form>
         <p className="auth-switch">{mode === 'signup' ? 'Already part of the story?' : mode === 'reset' ? 'Remember your password?' : 'New around here?'} <button onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError('') }}>{mode === 'signin' ? 'Create an account' : 'Sign in'}</button></p>
       </>}
-      <div className="demo-divider"/><Link to="/onboarding" search={{ demo: true }} className="demo-link">Just looking around? <span>Try a local demo <ArrowUpRightIcon/></span></Link><p className="auth-legal"><ShieldCheck size={13}/> Adults 18+ only. By continuing, you agree to our <Link to="/terms">Terms</Link> and <Link to="/privacy">Privacy Policy</Link>.</p></section></div>
+      <div className="demo-divider"/><Link to="/offline" className="button button-secondary w-full"><Cpu size={16}/> Use real Offline AI on Android</Link><Link to="/onboarding" search={{ demo: true }} className="demo-link">Just looking around? <span>Try a local demo <ArrowUpRightIcon/></span></Link><p className="auth-legal"><ShieldCheck size={13}/> Adults 18+ only. By continuing, you agree to our <Link to="/terms">Terms</Link> and <Link to="/privacy">Privacy Policy</Link>.</p></section></div>
 }
 function ArrowUpRightIcon() { return <ArrowRight size={14} style={{ transform: 'rotate(-35deg)' }}/> }
 function GoogleIcon() { return <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 6 1.2 8.1 3.2l5.7-5.7A19.9 19.9 0 0 0 24 4C13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.4-.4-3.5Z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 6 1.2 8.1 3.2l5.7-5.7A19.9 19.9 0 0 0 24 4C16.2 4 9.4 8.4 6.3 14.7Z"/><path fill="#4CAF50" d="M24 44c5.2 0 10-2 13.5-5.3l-6.2-5.2A12 12 0 0 1 12.7 28l-6.5 5A20 20 0 0 0 24 44Z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4.1 5.5l6.3 5.2C41.4 35.1 44 30 44 24c0-1.3-.1-2.4-.4-3.5Z"/></svg> }
 
 export function OnboardingPage({ demo = false }: { demo?: boolean }) {
-  const { user, profile, startDemo, saveProfile, authLoading } = useApp()
+  const { user, profile, startDemo, saveProfile, authLoading, offlineAI } = useApp()
   const navigate = useNavigate()
   const [username, setUsername] = useState(profile?.username.startsWith('dreamer_') ? '' : profile?.username || '')
   const [avatar, setAvatar] = useState(profile?.avatar_url || '/images/luna.webp')
@@ -86,7 +87,7 @@ export function OnboardingPage({ demo = false }: { demo?: boolean }) {
     if (!/^[a-zA-Z0-9_]{3,24}$/.test(username)) { setError('Use 3–24 letters, numbers, or underscores.'); return }
     setSaving(true)
     try {
-      if (demo && !user) startDemo(username, avatar)
+      if ((demo || offlineAI) && !user) startDemo(username, avatar)
       else if (user) await saveProfile({ username, avatar_url: avatar, adult_confirmed: true, onboarding_completed: true, nsfw_enabled: false })
       else throw new Error('Sign in to finish your profile, or choose the local demo.')
       void navigate({ to: '/' })
@@ -99,8 +100,8 @@ export function OnboardingPage({ demo = false }: { demo?: boolean }) {
     try { setAvatar(await uploadAvatar(file, user?.id || 'demo')) } catch (error) { toast.error(errorMessage(error)) }
     finally { setUploading(false) }
   }
-  if (!authLoading && !user && !demo) return <div className="centered-page"><section className="onboarding-card"><Logo/><h2>Let’s make this world yours.</h2><p>Sign in to finish your profile and save your stories across devices.</p><Link to="/auth" className="button button-primary">Sign in <ArrowRight size={16}/></Link><Link to="/onboarding" search={{ demo: true }} className="text-link">Or explore a local demo</Link></section></div>
-  return <div className="centered-page page-enter"><form className="onboarding-card" onSubmit={event => void submit(event)}><Logo/><div className="onboarding-step"><span className="step-done"><Check size={12}/></span><span/><i>2</i></div><span className="eyebrow">A LITTLE INTRODUCTION</span><h2>Every soul needs a name.</h2><p>Let’s make your corner of this world feel like you.</p>{demo && !user && <div className="demo-notice"><Sparkles size={16}/><span>Local demo · Scripted replies · Saved in this browser</span></div>}
+  if (!authLoading && !user && !demo && !offlineAI) return <div className="centered-page"><section className="onboarding-card"><Logo/><h2>Let’s make this world yours.</h2><p>Sign in to finish your profile and save your stories across devices.</p><Link to="/auth" className="button button-primary">Sign in <ArrowRight size={16}/></Link><Link to="/onboarding" search={{ demo: true }} className="text-link">Or explore a local demo</Link></section></div>
+  return <div className="centered-page page-enter"><form className="onboarding-card" onSubmit={event => void submit(event)}><Logo/><div className="onboarding-step"><span className="step-done"><Check size={12}/></span><span/><i>2</i></div><span className="eyebrow">A LITTLE INTRODUCTION</span><h2>Every soul needs a name.</h2><p>Let’s make your corner of this world feel like you.</p>{(demo || offlineAI) && !user && <div className="demo-notice"><Sparkles size={16}/><span>{offlineAI ? 'Offline AI · Real on-device replies · No cloud account' : 'Local demo · Scripted replies · Saved in this browser'}</span></div>}
     <div className="onboarding-avatar"><Avatar src={avatar} name="Your chosen avatar"/><label className="upload-avatar-button" aria-label="Upload your avatar"><ImagePlus size={16}/><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => void upload(e.target.files?.[0])} disabled={uploading}/></label></div><span className="avatar-caption">Choose a face for your adventures</span><div className="avatar-picker">{avatars.map(name => <button type="button" key={name} onClick={() => setAvatar(`/images/${name}.webp`)} className={cn(avatar === `/images/${name}.webp` && 'selected')} aria-label={`Choose ${name} avatar`} aria-pressed={avatar === `/images/${name}.webp`}><Avatar src={`/images/${name}.webp`} name={name}/>{avatar === `/images/${name}.webp` && <CheckCircle2 size={16}/>}</button>)}</div>
     <label className="field-label" htmlFor="username">Your username</label><div className="input-icon-wrap"><span className="at-symbol">@</span><input id="username" autoComplete="username" placeholder="a_little_stardust" required minLength={3} maxLength={24} pattern="[a-zA-Z0-9_]{3,24}" value={username} onChange={e => setUsername(e.target.value)}/></div><small className="field-hint">3–24 letters, numbers, and underscores. Entirely you.</small>
     <label className="checkbox-label adult-checkbox"><input type="checkbox" checked={adult} onChange={e => setAdult(e.target.checked)} required/><span>I confirm I am <strong>18 or older</strong> and agree to the <Link to="/terms">Terms</Link> and <Link to="/privacy">Privacy Policy</Link>.</span></label>{error && <p className="form-error" role="alert">{error}</p>}<Button type="submit" className="w-full" loading={saving || uploading} disabled={authLoading}>Make myself at home <ArrowRight size={17}/></Button><div className="onboarding-safety"><ShieldCheck size={14}/> A safe space. Content filters on by default.</div>
@@ -108,6 +109,7 @@ export function OnboardingPage({ demo = false }: { demo?: boolean }) {
 }
 
 export function ResetPasswordPage() {
+  const { offlineAI } = useApp()
   const [password, setPassword] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -115,6 +117,7 @@ export function ResetPasswordPage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setSaving(true)
     try {
+      if (offlineAI) throw new Error('Switch out of Offline AI before changing a cloud password.')
       if (!supabase) throw new Error('Supabase is not connected.')
       const { error } = await supabase.auth.updateUser({ password })
       if (error) throw error

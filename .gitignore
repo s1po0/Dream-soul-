@@ -28,3 +28,6 @@ android/capacitor-cordova-android-plugins/
 *.apk
 *.aab
 artifacts/
+
+android/app/.cxx/
+*.gguf

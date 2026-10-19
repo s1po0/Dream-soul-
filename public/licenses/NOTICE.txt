@@ -1,0 +1,20 @@
+DreamSoul Offline AI third-party notices
+
+Inference engine: llama.cpp
+Copyright (c) 2023-2026 The ggml authors
+License: MIT (see llama-cpp.txt)
+Source: https://github.com/ggml-org/llama.cpp
+Pinned source: 620d2225cc436ab0b001e3200e590e3b286ef9ab (v0.7.0)
+Source SHA-256: 1d4a987d9bd048f6e93107e838026438df70fbde237fc0c69c63d600512b4bd9
+
+Model: Qwen2.5-0.5B-Instruct-GGUF, Q4_K_M
+By the Qwen team, Alibaba Cloud.
+License: Apache License, Version 2.0 (see Apache-2.0.txt)
+Official source: https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF
+Revision, file size, and SHA-256 are in offline-model.json.
+Weights are downloaded separately, not bundled in the APK or committed to Git.
+DreamSoul does not modify the downloaded GGUF weights.
+
+Official model metadata was verified from the Hugging Face Hub API by GitHub
+Actions run 39279343350 on October 19, 2026. The Android build additionally
+verifies the actual official download's bytes and hash before testing.
