@@ -9,6 +9,7 @@ on:
       - 'android/**'
       - 'scripts/android-assets.mjs'
       - 'scripts/offline-model.mjs'
+      - 'scripts/android-diagnostic.mjs'
       - 'scripts/run-checked.mjs'
       - 'package*.json'
       - 'capacitor.config.ts'
@@ -18,6 +19,7 @@ on:
 
 permissions:
   contents: write
+  checks: write
 
 concurrency:
   group: android-apk-${{ github.ref }}
@@ -65,7 +67,14 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          node ../scripts/run-checked.mjs ./gradlew assembleDebug assembleDebugAndroidTest -PdreamsoulVersionCode=${{ github.run_number }} --no-daemon --console=plain
+          mkdir -p ../.arena
+          set -o pipefail
+          node ../scripts/run-checked.mjs ./gradlew assembleDebug assembleDebugAndroidTest -PdreamsoulVersionCode=${{ github.run_number }} --no-daemon --max-workers=2 --console=plain 2>&1 | tee ../.arena/android-build.log
+      - name: Publish bounded native build diagnostic
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/android-diagnostic.mjs
       - name: Verify and download the official pinned model for testing
         run: node scripts/run-checked.mjs node scripts/offline-model.mjs
       - name: Enable KVM for the real Android offline test
