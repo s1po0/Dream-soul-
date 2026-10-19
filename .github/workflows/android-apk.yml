@@ -61,7 +61,7 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          node ../scripts/run-checked.mjs ./gradlew assembleDebug -PdreamsoulVersionCode=${{ github.run_number }} --no-daemon --stacktrace
+          node ../scripts/run-checked.mjs ./gradlew assembleDebug -PdreamsoulVersionCode=${{ github.run_number }} --no-daemon --console=plain
       - name: Verify signature and prepare download
         run: |
           mkdir -p artifacts

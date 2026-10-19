@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react'
+import { useLayoutEffect, useId, useRef } from 'react'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { X, Sparkles, Loader2 } from 'lucide-react'
 import { cn } from '../lib/utils'
@@ -23,12 +23,12 @@ export function Modal({ open, onClose, title, children, className }: { open: boo
   const titleId = useId()
   const closeRef = useRef(onClose)
   closeRef.current = onClose
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return
     const previous = document.activeElement as HTMLElement | null
     const oldOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    const timer = window.setTimeout(() => panel.current?.querySelector<HTMLElement>('button, input, select, textarea, a[href]')?.focus(), 50)
+    panel.current?.querySelector<HTMLElement>('button, input, select, textarea, a[href]')?.focus()
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') closeRef.current()
       if (event.key !== 'Tab') return
@@ -39,7 +39,7 @@ export function Modal({ open, onClose, title, children, className }: { open: boo
       else if (!event.shiftKey && document.activeElement === last) { first.focus(); event.preventDefault() }
     }
     document.addEventListener('keydown', onKey)
-    return () => { window.clearTimeout(timer); document.body.style.overflow = oldOverflow; document.removeEventListener('keydown', onKey); previous?.focus() }
+    return () => { document.body.style.overflow = oldOverflow; document.removeEventListener('keydown', onKey); previous?.focus() }
   }, [open])
   if (!open) return null
   return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
