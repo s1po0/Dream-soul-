@@ -36,6 +36,8 @@ jobs:
           const safe = { outcome: outcomes.has(data.outcome) ? data.outcome : 'unknown', http_status: response.status, provider_status: Number.isInteger(data.provider_status) ? data.provider_status : null, code: codes.has(data.code) ? data.code : 'unknown', reply_received: data.reply_received === true };
           safe.auth_reason = new Set(['ERR_JWT_EXPIRED', 'ERR_JWT_CLAIM_VALIDATION_FAILED', 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED', 'ERR_JWKS_TIMEOUT', 'ERR_JOSE_NOT_SUPPORTED', 'ERR_JWKS_NO_MATCHING_KEY', 'ERR_JWKS_INVALID', 'ERR_JWT_INVALID', 'ERR_JOSE_ALG_NOT_ALLOWED', 'WRONG_REPOSITORY', 'WRONG_REF', 'WRONG_WORKFLOW', 'UNAUTHORIZED']).has(data.auth_reason) ? data.auth_reason : null;
           safe.auth_claim = new Set(['iss', 'aud', 'sub', 'exp', 'iat', 'nbf']).has(data.auth_claim) ? data.auth_claim : null;
+          safe.reason = new Set(['quota_or_billing', 'rate_limit', 'unknown']).has(data.reason) ? data.reason : null;
+          safe.retry_after_seconds = Number.isFinite(data.retry_after_seconds) && data.retry_after_seconds > 0 && data.retry_after_seconds <= 86400 ? data.retry_after_seconds : null;
           console.log(`::${safe.outcome === 'ok' ? 'notice' : 'warning'} title=Live AI result::${JSON.stringify(safe)}`);
           if (safe.outcome !== 'ok') process.exitCode = 1;
           JS
