@@ -146,3 +146,11 @@ No APKs, signing keys, local SDK paths, or generated copies of web assets are co
 The deployed chat function accepts the existing secret named `Dream soul ` (including its trailing space), so the owner does not have to expose or copy its value to fix that naming mismatch. `LLM_API_KEY` remains the recommended name and takes priority; whitespace around either value is trimmed. With the default OpenAI endpoint, an alias that clearly belongs to another provider is rejected rather than sent to OpenAI. Configure `LLM_BASE_URL` and `LLM_MODEL` explicitly for a compatible non-OpenAI provider.
 
 This is a server-only fix: the existing APK does not need to be reinstalled. Provider rejection, model configuration, and billing/rate-limit failures have distinct safe messages; provider responses and credentials are never echoed to clients. Eight isolated Edge Function regression checks cover key precedence, the existing alias, missing/unknown-provider credentials, native CORS, fragmented Unicode streaming/persistence, error redaction/unlocking, and keyless restart. Tests use only dummy credentials and mocked provider/auth/database adapters, not the owner's real provider account.
+
+### A saved secret is not necessarily a working AI connection
+
+`LLM_API_KEY` must contain an actual API key issued by the selected **AI provider**. A Supabase publishable/service key, GitHub token, project password, secret name, or the SHA-256 digest shown by the management API is not a replacement. Save the original provider-issued value directly in Supabase Edge Function secrets; never paste it in chat, commit it, or add it to a `VITE_` variable.
+
+The default provider is OpenAI. Create its key at https://platform.openai.com/api-keys and ensure the provider account has API quota. If using a different provider, identify its website first and configure its documented OpenAI-compatible endpoint/model; do not send unknown credentials to guessed providers. Merely finding a secret or passing mocked tests does not verify a live reply.
+
+A temporary server-side classification check was used during diagnosis and then removed. It returned only predefined key-family/format labels, never credential values, and made no AI-generation requests.
