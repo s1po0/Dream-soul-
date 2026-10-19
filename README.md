@@ -100,7 +100,7 @@ Deploy `dist/` to a static host that rewrites application routes to `index.html`
 ## Verification completed
 
 - TypeScript and production build pass.
-- 14 Vitest checks pass, including arbitrary SSE framing/UTF-8 chunk boundaries.
+- 22 Vitest checks pass, including arbitrary SSE framing/UTF-8 chunk boundaries.
 - 8 Playwright flows pass at 390px and desktop widths, including real keystrokes in the edit dialog and no horizontal overflow on the main pages. External auth/catalog APIs are mocked in browser tests; demo conversations are exercised end to end.
 - The rollback-only SQL regression was also run against the connected Supabase project: owner isolation, anonymous/public/private access, protected message/counter writes, service-only RPCs, concurrent chat locking, one thread per character, and the 30/hour cap all pass. Fixtures were rolled back.
 - `npm audit` reports no known dependency vulnerabilities at build time.
@@ -140,3 +140,9 @@ No APKs, signing keys, local SDK paths, or generated copies of web assets are co
 - Include `com.dreamsoul.app://auth/**` in Supabase Auth's redirect allowlist for the native email/Google callback. The app uses PKCE and opens Google OAuth in the system browser, not an embedded sign-in page.
 - Email confirmation/recovery links initiated on a phone should be opened on that same phone so the app can exchange its stored PKCE verifier.
 - The APK does not include LLM secrets or privileged Supabase keys. Live AI and Google OAuth still require the owner configuration described above.
+
+### Existing AI secret compatibility
+
+The deployed chat function accepts the existing secret named `Dream soul ` (including its trailing space), so the owner does not have to expose or copy its value to fix that naming mismatch. `LLM_API_KEY` remains the recommended name and takes priority; whitespace around either value is trimmed. With the default OpenAI endpoint, an alias that clearly belongs to another provider is rejected rather than sent to OpenAI. Configure `LLM_BASE_URL` and `LLM_MODEL` explicitly for a compatible non-OpenAI provider.
+
+This is a server-only fix: the existing APK does not need to be reinstalled. Provider rejection, model configuration, and billing/rate-limit failures have distinct safe messages; provider responses and credentials are never echoed to clients. Eight isolated Edge Function regression checks cover key precedence, the existing alias, missing/unknown-provider credentials, native CORS, fragmented Unicode streaming/persistence, error redaction/unlocking, and keyless restart. Tests use only dummy credentials and mocked provider/auth/database adapters, not the owner's real provider account.

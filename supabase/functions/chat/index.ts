@@ -50,7 +50,14 @@ Deno.serve(async request => {
   if (!characterId || !UUID.test(characterId) || !['send', 'edit', 'regenerate', 'restart'].includes(mode)) return json({ error: 'This conversation request is not valid.' }, 400)
   if (['send', 'edit'].includes(mode) && (!content || content.length > 4000)) return json({ error: 'Messages need 1–4000 characters.' }, 400)
   if (mode === 'edit' && (!editId || !UUID.test(editId))) return json({ error: 'Choose your latest message to edit.' }, 400)
-  const llmKey = Deno.env.get('LLM_API_KEY')
+  // Prefer the standard name, but accept the owner's existing secret without
+  // copying, returning or logging its value. The trailing space is intentional.
+  const canonicalKey = Deno.env.get('LLM_API_KEY')?.trim()
+  const existingKey = Deno.env.get('Dream soul ')?.trim()
+  const llmKey = canonicalKey || existingKey
+  if (mode !== 'restart' && !canonicalKey && existingKey && !Deno.env.get('LLM_BASE_URL') && (!existingKey.startsWith('sk-') || existingKey.startsWith('sk-ant-'))) {
+    return json({ error: 'The saved key is not an OpenAI API key. The owner needs to configure LLM_BASE_URL and LLM_MODEL for its AI provider, or save an OpenAI API key.' }, 503)
+  }
   if (mode !== 'restart' && !llmKey) return json({ error: 'Live AI isn’t connected yet. The project owner needs to set LLM_API_KEY in Supabase Edge Function secrets. You can explore the local demo in the meantime.' }, 503)
 
   // Service-only RPC validates ownership, visibility, age, safety and blocks, and
@@ -81,7 +88,14 @@ Deno.serve(async request => {
     }).catch(error => { clearTimeout(timeout); throw error })
     if (!upstream.ok || !upstream.body) {
       clearTimeout(timeout); await upstream.body?.cancel(); await failTurn()
-      return json({ error: upstream.status === 429 ? 'Our AI provider is a little busy. Please try again shortly.' : 'The AI provider couldn’t reply. Please check the server’s provider configuration or try again later.' }, 502)
+      const providerError = [401, 403].includes(upstream.status)
+        ? 'The AI provider rejected the configured key. The owner needs to check that it is valid and can access the selected model.'
+        : [402, 429].includes(upstream.status)
+          ? 'The AI provider has reached a billing or rate limit. The owner needs to check API credits, billing and limits, or try again shortly.'
+          : [400, 404].includes(upstream.status)
+            ? 'The AI provider could not use the configured model. The owner needs to check LLM_BASE_URL and LLM_MODEL.'
+            : 'The AI provider couldn’t reply. Please check the server’s provider configuration or try again later.'
+      return json({ error: providerError }, 502)
     }
     const encoder = new TextEncoder()
     let canceled = false
