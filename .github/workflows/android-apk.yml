@@ -48,12 +48,20 @@ jobs:
           npm test
           npm run android:sync
       - name: Install the Android SDK
-        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -maxdepth 3 -name sdkmanager -type f | sort -V | tail -n 1)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "::error::Android sdkmanager was not found under $SDK_ROOT/cmdline-tools"
+            exit 1
+          fi
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          node scripts/run-checked.mjs "$SDKMANAGER" --sdk_root="$SDK_ROOT" 'platforms;android-36' 'build-tools;36.0.0'
       - name: Build the signed preview APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug -PdreamsoulVersionCode=${{ github.run_number }} --no-daemon --stacktrace
+          node ../scripts/run-checked.mjs ./gradlew assembleDebug -PdreamsoulVersionCode=${{ github.run_number }} --no-daemon --stacktrace
       - name: Verify signature and prepare download
         run: |
           mkdir -p artifacts
