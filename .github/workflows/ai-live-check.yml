@@ -1,0 +1,34 @@
+name: Temporary live AI check
+on:
+  push:
+    branches: [arena/15a781b8-dream-soul]
+    paths: ['.github/workflows/ai-live-check.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Authenticated provider test with server-held key
+        run: |
+          node --input-type=module <<'JS'
+          const url = new URL(process.env.ACTIONS_ID_TOKEN_REQUEST_URL);
+          url.searchParams.set('audience', 'dreamsoul-ai-live-check');
+          const identity = await fetch(url, { headers: { Authorization: `Bearer ${process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}` }, signal: AbortSignal.timeout(15000) });
+          if (!identity.ok) throw new Error('GitHub workload identity could not be issued');
+          const { value } = await identity.json();
+          if (typeof value !== 'string') throw new Error('Missing workload identity');
+          const response = await fetch('https://cbkddsztcivllpwzflkx.supabase.co/functions/v1/ai-live-check', { method: 'POST', headers: { Authorization: `Bearer ${value}` }, signal: AbortSignal.timeout(45000) });
+          const data = await response.json().catch(() => ({}));
+          const outcomes = new Set(['ok', 'provider_error', 'network_error', 'configuration_error', 'unauthorized_probe']);
+          const codes = new Set(['OK', 'MISSING_KEY', 'KEY_FORMAT', 'UNEXPECTED_BASE_URL', 'TIMEOUT', 'NETWORK_ERROR', 'UNAUTHORIZED', 'UNKNOWN_PROVIDER_ERROR', 'EMPTY_REPLY', 'invalid_api_key', 'insufficient_quota', 'billing_hard_limit_reached', 'billing_not_active', 'model_not_found', 'rate_limit_exceeded', 'permission_denied', 'account_deactivated', 'organization_deactivated', 'unsupported_country_region_territory', 'unsupported_value', 'invalid_request_error']);
+          const safe = { outcome: outcomes.has(data.outcome) ? data.outcome : 'unknown', http_status: response.status, provider_status: Number.isInteger(data.provider_status) ? data.provider_status : null, code: codes.has(data.code) ? data.code : 'unknown', reply_received: data.reply_received === true };
+          console.log(`::${safe.outcome === 'ok' ? 'notice' : 'warning'} title=Live AI result::${JSON.stringify(safe)}`);
+          if (safe.outcome !== 'ok') process.exitCode = 1;
+          JS
