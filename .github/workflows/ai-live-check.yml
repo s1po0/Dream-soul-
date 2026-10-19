@@ -27,6 +27,7 @@ jobs:
           const header = JSON.parse(Buffer.from(value.split('.')[0], 'base64url').toString());
           const claims = JSON.parse(Buffer.from(value.split('.')[1], 'base64url').toString());
           const scope = { rsa: header.alg === 'RS256', issuer: claims.iss === 'https://token.actions.githubusercontent.com', audience: claims.aud === 'dreamsoul-ai-live-check', subject: claims.sub === 'repo:s1po0/Dream-soul-:ref:refs/heads/arena/15a781b8-dream-soul', repository: claims.repository === 's1po0/Dream-soul-', ref: claims.ref === 'refs/heads/arena/15a781b8-dream-soul', workflow_ref_present: typeof claims.workflow_ref === 'string', workflow_name: claims.workflow === 'Temporary live AI check' };
+          scope.workflow_ref_expected = claims.workflow_ref === process.env.GITHUB_WORKFLOW_REF;
           console.log(`::notice title=Probe identity scope::${JSON.stringify(scope)}`);
           const response = await fetch('https://cbkddsztcivllpwzflkx.supabase.co/functions/v1/ai-live-check', { method: 'POST', headers: { Authorization: `Bearer ${value}` }, signal: AbortSignal.timeout(45000) });
           const data = await response.json().catch(() => ({}));
