@@ -31,13 +31,49 @@ The existing project was restored with permission. The following were deployed:
 - `chat` and `delete-account` Edge Functions, both authenticating user JWTs themselves.
 - Email auth with email verification left enabled. Local development and Arena preview redirect URLs are allowed.
 
-**Still requires owner configuration:**
+**Cloud-mode setup (not needed for Offline AI):**
 
-1. Add `LLM_API_KEY` in **Supabase → Edge Functions → Secrets**. Never add this to a `VITE_*` variable, source code, or chat. Optional secrets: `LLM_BASE_URL` (default `https://api.openai.com/v1`), `LLM_MODEL` (default `gpt-4o-mini`), and `ALLOWED_ORIGINS` (comma-separated exact origins).
+1. The connected project already has `LLM_API_KEY`, but a real provider request returned **HTTP 429 / quota or billing** on 2026-10-19. Fix provider credit/limits for cloud chat. For a fresh project, add `LLM_API_KEY` in **Supabase → Edge Functions → Secrets**. Never add this to a `VITE_*` variable, source code, or chat. Optional secrets: `LLM_BASE_URL` (default `https://api.openai.com/v1`), `LLM_MODEL` (default `gpt-4o-mini`), and `ALLOWED_ORIGINS` (comma-separated exact origins).
 2. In **Authentication → Sign In / Providers → Google**, enable Google and configure your Google OAuth client ID/secret. Use the callback URL Supabase displays. The UI checks provider availability and shows a helpful error rather than redirecting to a broken provider URL.
 3. For production, set the actual Auth Site URL, narrow the redirect allowlist to your deployment, set `ALLOWED_ORIGINS` to your exact deployment origin, and configure a production SMTP provider. The built-in email sender is rate-limited and not suitable for unrestricted public registration.
 
-Without an LLM secret, the live function returns a useful **503 configuration error** before storing or consuming a generation. It does **not** silently substitute a demo reply. Live LLM and Google OAuth round-trips cannot be verified until those credentials are configured.
+Without an LLM secret, the live function returns a useful **503 configuration error** before storing or consuming a generation. It does **not** silently substitute a demo reply. The real OpenAI round-trip was verified to reach the provider, which refused generation because of quota/billing; a successful cloud reply is not claimed. Google OAuth remains unconfigured/unverified.
+
+## Real Android Offline AI
+
+The **1.1.0-offline-preview** Android build adds actual CPU inference using **llama.cpp** and **Qwen2.5-0.5B Instruct Q4_K_M**. This is not the scripted demo. Publishing is gated on the real Android model/inference test described below; older APK previews do not include this engine.
+
+### Use it on a phone
+
+1. Install an APK whose release notes explicitly say **real Offline AI** from [GitHub Releases](https://github.com/s1po0/Dream-soul-/releases).
+2. Open **Offline AI** from the header/menu. On Wi-Fi, tap **Download free model**. Keep the app open. Interrupted downloads can resume.
+3. Tap **Use Offline AI**, choose a local profile, and confirm you are 18 or older. You do not need a cloud account or API key.
+4. Pick a bundled character or create a local character, then chat. After setup, replies work with Wi-Fi/mobile data turned off. Regenerate, edit the last message, restart, and stop generation are supported.
+
+**Requirements:** 64-bit Android 7.0+ (`arm64-v8a` or `x86_64`), **4–6 GB RAM recommended**, and approximately **1 GB free storage** during setup. The separate model download is **491,400,032 bytes (~491 MB / 469 MiB)**. Normal network/data charges may apply; there are **no API generation charges or provider credentials** for local replies.
+
+| Mode | Reply source | History | Network / limits |
+|---|---|---|---|
+| Offline AI | Real local Qwen model via native llama.cpp | Device-only, separate from demo | Initial model download; no API hourly generation limit |
+| Cloud account | Configured server-side LLM provider | Owner-protected Supabase records | Internet, provider credit, 30 generations/hour |
+| Local demo | Explicitly scripted examples | Device-only | Public catalog can load online; 30/hour browser-side preview cap |
+
+**Honest limitations:** this small model is less capable than cloud AI, can repeat itself or make mistakes, and has best-effort—not guaranteed—safety filtering. Defaults remain safe-for-work and adults-only. Generation uses battery, can warm the phone, and varies greatly in speed by hardware. Context is capped at **2,048 tokens** and each reply at **256 tokens**. The prompt includes the character and up to the latest 20 messages that fit; older messages are removed from the prompt, not deleted from stored history. It is not professional advice or a substitute for real-world relationships.
+
+### Local privacy, storage, and switching modes
+
+- When Offline AI is on, automatic Supabase auth refresh, catalog, favorites/history, and chat networking are paused. On offline boot the Supabase client is not constructed at all, including when an expired cloud session is stored. An existing cloud session/data is retained and used again only after an explicit **Return to online / demo mode** action.
+- Only bundled starter and locally created characters are shown. Local characters/preferences can be reused between the two local modes, but offline conversations/drafts use separate `dreamsoul:offline:*` storage keys so scripted history is not presented as real-model history.
+- Chat messages, profiles, drafts, and local creations are in app-private WebView storage. The model is in private native files (`files/models/dreamsoul-light.gguf`). Android app/cloud-backup and device-transfer rules exclude these files. DreamSoul does not provide a backup for local content.
+- Local storage has a capacity limit. Offline saves report an error if required storage is full/unavailable rather than pretending to save. Keep local portraits small; clearing old conversations frees local capacity. Uninstalling or clearing app data removes local content.
+- **Profile → Settings → Clear all local data** clears local profiles, conversations, favorites, and creations without deleting an existing cloud account. **Offline AI → Remove local model** frees model storage without deleting chats.
+- Native failures show a real error with retry/setup actions. There is **no fallback to scripted or paid cloud replies**. A pending user message is saved before inference, so it can be retried after interruption/restart. Local reports remain on-device, clearly not submitted to moderators.
+
+### Model integrity and licenses
+
+`public/offline-model.json` pins the official model's revision, exact size, and SHA-256. Official metadata was confirmed by Actions run [39279343350](https://github.com/s1po0/Dream-soul-/actions/runs/39279343350). Downloads follow HTTPS only to Hugging Face delivery hosts, support HTTP Range resume, and are SHA-256 verified before installation and cold loading. Weights are never committed to Git, bundled in the APK, or sent to Supabase. The initial download contacts Hugging Face/CDN servers (IP/request metadata only, not chats).
+
+The native engine is pinned to llama.cpp source commit `620d2225cc436ab0b001e3200e590e3b286ef9ab`, with its source archive checksum checked by CMake. Engine: MIT. Model: Apache 2.0. Full licenses and provenance are bundled under `public/licenses/`.
 
 ## Explore without credentials
 
@@ -80,6 +116,7 @@ Set the secrets and Auth URLs in the dashboard. The functions have `verify_jwt=f
 | `/auth`, `/onboarding`, `/reset-password` | Email/Google auth, 18+ profile setup, recovery |
 | `/create`, `/characters/:id/edit` | Character studio, upload, live preview, ownership controls |
 | `/chat/:id`, `/chats` | Conversation, history, streaming and safety controls |
+| `/offline` | Native model download/resume, device requirements, activation, removal, and explicit mode switching |
 | `/favorites`, `/profile` | Saved souls, creations, account and safety settings |
 | `/terms`, `/privacy` | Community guidelines and data handling |
 
@@ -100,15 +137,16 @@ Deploy `dist/` to a static host that rewrites application routes to `index.html`
 ## Verification completed
 
 - TypeScript and production build pass.
-- 25 Vitest checks pass, including arbitrary SSE framing/UTF-8 chunk boundaries.
-- 8 Playwright flows pass at 390px and desktop widths, including real keystrokes in the edit dialog and no horizontal overflow on the main pages. External auth/catalog APIs are mocked in browser tests; demo conversations are exercised end to end.
+- 35 Vitest checks pass, including arbitrary SSE framing/UTF-8 chunk boundaries.
+- 12 Playwright flows pass at 390px and desktop widths, including real keystrokes in the edit dialog and no horizontal overflow on the main pages. External auth/catalog APIs are mocked in browser tests; demo conversations are exercised end to end. Offline browser checks prove no cloud requests (even with an expired saved session), separate histories, persistent pending messages, explicit switching, and honest errors without a native engine.
 - The rollback-only SQL regression was also run against the connected Supabase project: owner isolation, anonymous/public/private access, protected message/counter writes, service-only RPCs, concurrent chat locking, one thread per character, and the 30/hour cap all pass. Fixtures were rolled back.
+- The pinned native C++ engine and JNI bridge compile on the Linux host. This is a compilation check, not a claim of Android runtime success. The Android release workflow additionally gates publishing on real native download/resume + SHA-256 verification, then real model inference, streamed UTF-8, recent-message context, cancellation/retry, and removal **after disabling device networking**. See the run status before downloading.
 - `npm audit` reports no known dependency vulnerabilities at build time.
 - A real OpenAI request was tested on 2026-10-19: it returned HTTP 429 with a quota/billing-related failure. The key is configured, but successful live replies remain blocked on the provider account. Google OAuth remains unverified/unconfigured.
 
 ## Android APK
 
-DreamSoul also has a Capacitor 8 Android shell (`com.dreamsoul.app`, Android 7.0+). The app is bundled locally rather than loading a hosted website. Native builds skip the PWA service worker, use branded launcher/splash assets, handle Android's back button, and support sign-in/recovery callbacks through `com.dreamsoul.app://auth/callback`.
+DreamSoul also has a Capacitor 8 Android shell (`com.dreamsoul.app`, 64-bit Android 7.0+). The app is bundled locally rather than loading a hosted website. Native builds skip the PWA service worker, use branded launcher/splash assets, handle Android's back button, and support sign-in/recovery callbacks through `com.dreamsoul.app://auth/callback`.
 
 ### Download
 
@@ -116,13 +154,13 @@ Open [GitHub Releases](https://github.com/s1po0/Dream-soul-/releases) and downlo
 
 ### Automatic build
 
-The **Android APK** GitHub Actions workflow builds, verifies the APK signature, uploads an Actions artifact, and creates a prerelease with APK/checksum downloads. It runs on app changes pushed to `arena/15a781b8-dream-soul` and can be manually rerun using that branch. Release tags identify the exact source commit.
+The **Android APK** GitHub Actions workflow builds the CPU engine for arm64/x86_64, exercises a real Android emulator with the official model, verifies the APK signature, uploads an Actions artifact, and creates a prerelease with APK/checksum downloads. It runs on app changes pushed to `arena/15a781b8-dream-soul` and can be manually rerun using that branch. Release tags identify the exact source commit.
 
-The initial preview uses the Android debug signing key. A best-effort Actions cache preserves that key across builds, but it is not a durable or secure production signing setup. If the key changes, uninstall the previous preview before installing the replacement (this clears local demo data). For production updates, use a permanent release keystore stored securely as GitHub Actions secrets, with an offline owner-controlled backup; never commit signing keys or passwords.
+The initial preview uses the Android debug signing key. A best-effort Actions cache preserves that key across builds, but it is not a durable or secure production signing setup. If the key changes, uninstall the previous preview before installing the replacement (this clears local offline/demo data). For production updates, use a permanent release keystore stored securely as GitHub Actions secrets, with an offline owner-controlled backup; never commit signing keys or passwords.
 
 ### Local Android development
 
-Install Android Studio/SDK 36 and Java 21, then:
+Install Android Studio/SDK 36, Java 21, **NDK 27.3.13750724**, and **CMake 3.22.1**, then:
 
 ```bash
 npm ci
@@ -132,20 +170,22 @@ npm run android:open      # open in Android Studio
 # Or: cd android && ./gradlew assembleDebug
 ```
 
-No APKs, signing keys, local SDK paths, or generated copies of web assets are committed.
+The workflow's Android test supplies only a 4 MiB partial model, calls the production Capacitor plugin to resume/download/verify it, turns off device networking, then checks actual prompt-dependent replies, streamed-token equality, context, cancellation recovery, and deletion. `node scripts/offline-model.mjs` is a CI/developer helper that verifies official metadata and downloads a verified test model into excluded `.arena/`; it does not contain credentials.
+
+No weights, APKs, signing keys, local SDK paths, or generated copies of web assets are committed.
 
 ### Native backend setup
 
 - Include `https://localhost` in the Edge Functions' allowed origins (Capacitor's on-device origin). If `ALLOWED_ORIGINS` is explicitly configured, include this origin alongside the web deployment's exact origin.
 - Include `com.dreamsoul.app://auth/**` in Supabase Auth's redirect allowlist for the native email/Google callback. The app uses PKCE and opens Google OAuth in the system browser, not an embedded sign-in page.
 - Email confirmation/recovery links initiated on a phone should be opened on that same phone so the app can exchange its stored PKCE verifier.
-- The APK does not include LLM secrets or privileged Supabase keys. Live AI and Google OAuth still require the owner configuration described above.
+- The APK does not include LLM secrets or privileged Supabase keys. Cloud AI and Google OAuth still require the owner configuration described above. Real Offline AI does not.
 
 ### Existing AI secret compatibility
 
 The deployed chat function accepts the existing secret named `Dream soul ` (including its trailing space), so the owner does not have to expose or copy its value to fix that naming mismatch. `LLM_API_KEY` remains the recommended name and takes priority; whitespace around either value is trimmed. With the default OpenAI endpoint, an alias that clearly belongs to another provider is rejected rather than sent to OpenAI. Configure `LLM_BASE_URL` and `LLM_MODEL` explicitly for a compatible non-OpenAI provider.
 
-This is a server-only fix: the existing APK does not need to be reinstalled. Provider rejection, model configuration, and billing/rate-limit failures have distinct safe messages; provider responses and credentials are never echoed to clients. Eight isolated Edge Function regression checks cover key precedence, the existing alias, missing/unknown-provider credentials, native CORS, fragmented Unicode streaming/persistence, error redaction/unlocking, and keyless restart. Tests use only dummy credentials and mocked provider/auth/database adapters, not the owner's real provider account.
+This is a server-only fix: the existing APK does not need to be reinstalled. Provider rejection, model configuration, and billing/rate-limit failures have distinct safe messages; provider responses and credentials are never echoed to clients. Eleven isolated Edge Function regression checks cover key precedence, the existing alias, missing/unknown-provider credentials, native CORS, fragmented Unicode streaming/persistence, error redaction/unlocking, and keyless restart. Tests use only dummy credentials and mocked provider/auth/database adapters, not the owner's real provider account.
 
 ### A saved secret is not necessarily a working AI connection
 

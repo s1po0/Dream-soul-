@@ -37,6 +37,10 @@ repositories {
 }
 
 dependencies {
+    // AndroidX instrumentation can bring legacy split stdlib jars. Align them
+    // with the merged Kotlin runtime to prevent duplicate JDK7/JDK8 classes.
+    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.9.25')
+    androidTestImplementation platform('org.jetbrains.kotlin:kotlin-bom:1.9.25')
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"

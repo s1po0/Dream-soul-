@@ -18,3 +18,10 @@ DreamSoul does not modify the downloaded GGUF weights.
 Official model metadata was verified from the Hugging Face Hub API by GitHub
 Actions run 39279343350 on October 19, 2026. The Android build additionally
 verifies the actual official download's bytes and hash before testing.
+
+Additional linked components: xxHash (BSD 2-Clause), rotate-bits (MIT),
+SHA-1/SHA-256 (public domain), and nlohmann/json (MIT).
+See llama-third-party.txt for the full upstream notices.
+
+Android C++ runtime: LLVM libc++ / libc++abi, Apache 2.0 with LLVM exceptions.
+See libcxx.txt (upstream llvm-project libcxx/LICENSE.TXT, llvmorg-18.1.8).
